@@ -1,0 +1,47 @@
+{
+  "name": "pingflux",
+  "version": "1.0.1",
+  "description": "A lightweight, event-driven network diagnostics and observability SDK for Node.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "network",
+    "ping",
+    "tcp",
+    "udp",
+    "dns",
+    "http",
+    "latency",
+    "diagnostics"
+  ],
+  "author": "AmirVoid12 (https://github.com/AmirVoid12)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmirVoid12/pingflux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AmirVoid12/pingflux/issues"
+  },
+  "homepage": "https://github.com/AmirVoid12/pingflux#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "koffi": "^3.0.2"
+  },
+  "directories": {
+    "test": "test"
+  }
+}
