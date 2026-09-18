@@ -1,4 +1,7 @@
 node_modules
 dist
+build/
+prebuilds/
+*.zip
 .env
 package-lock.json
