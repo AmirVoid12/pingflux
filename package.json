@@ -31,6 +31,13 @@
     "url": "https://github.com/AmirVoid12/pingflux/issues"
   },
   "homepage": "https://github.com/AmirVoid12/pingflux#readme",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "engines": {
     "node": ">=16.0.0"
   },
