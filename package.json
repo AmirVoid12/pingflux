@@ -5,7 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "install": "node-gyp-build",
     "build": "tsc",
+    "prebuilds": "prebuildify --napi --strip",
     "prepublishOnly": "npm run build"
   },
   "files": [
