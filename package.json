@@ -11,7 +11,10 @@
     "prepublishOnly": "npm run build"
   },
   "files": [
-    "dist"
+    "dist",
+    "native",
+    "binding.gyp",
+    "prebuilds"
   ],
   "keywords": [
     "network",
