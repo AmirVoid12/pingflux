@@ -12,6 +12,13 @@
   <img src="https://img.shields.io/npm/v/pingflux?style=flat-square" />
   <img src="https://img.shields.io/badge/runtime-Node.js-339933?style=flat-square" />
   <img src="https://img.shields.io/badge/language-TypeScript-3178c6?style=flat-square" />
+  <img src="https://img.shields.io/badge/platform-Linux-fcc624?style=flat-square" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/AmirVoid12/pingflux/wiki"><b>wiki</b></a> ·
+  <a href="https://www.npmjs.com/package/pingflux">npm</a> ·
+  <a href="https://github.com/AmirVoid12/pingflux/issues">issues</a>
 </p>
 
 ---
@@ -20,7 +27,9 @@
 
 `pingflux` monitors network targets continuously. you point it at a host, pick a protocol, set an interval — it runs probes in the background and tells you when something is up, down, slow, or broken. no polling loops, no boilerplate. just events.
 
-five protocols supported out of the box: `http`, `https`, `tcp`, `udp`, `dns`, and `ping` (raw ICMP). each probe returns latency, status, and an optional error message. slow responses get their own event so you can distinguish degraded service from total failure.
+six protocols supported out of the box: `http`, `https`, `tcp`, `udp`, `dns`, and `ping` (ICMP, powered by a native C addon). each probe returns latency, status, and an optional error message. slow responses get their own event so you can distinguish degraded service from total failure.
+
+> **platform support:** pingflux currently installs on **Linux only** (x64 and arm64). windows and macOS are planned. see the [roadmap](https://github.com/AmirVoid12/pingflux/wiki/Roadmap).
 
 ---
 
@@ -29,6 +38,10 @@ five protocols supported out of the box: `http`, `https`, `tcp`, `udp`, `dns`, a
 ```bash
 npm install pingflux
 ```
+
+requires Node.js 16 or newer. the package ships a small native addon for ICMP: a prebuilt binary is used when one matches your system, otherwise it is compiled during install (needs `gcc`, `make` and `python3`).
+
+on Windows and macOS, npm refuses the install with `EBADPLATFORM`.
 
 ---
 
@@ -41,12 +54,29 @@ const pf = new Pingflux({ threshold: 500, retry: 2 });
 
 pf.watch({ protocol: "https", url: "amirvoid12.ir" });
 pf.watch({ protocol: "tcp", url: "amirvoid12.ir:443", interval: 10000 });
+pf.watch({ protocol: "ping", url: "1.1.1.1" });
 
 pf.on("up", (e) => console.log(`up ${e.target} — ${e.latency}ms`));
 pf.on("down", (e) => console.log(`down ${e.target}`));
 pf.on("slow", (e) => console.log(`slow ${e.target} — ${e.latency}ms`));
 pf.on("probe_error", (e) => console.error(`err ${e.target}: ${e.error}`));
 ```
+
+---
+
+## documentation
+
+full documentation lives in the **[wiki](https://github.com/AmirVoid12/pingflux/wiki)**:
+
+| page | what is inside |
+|---|---|
+| [Getting Started](https://github.com/AmirVoid12/pingflux/wiki/Getting-Started) | requirements, install, options |
+| [Protocols](https://github.com/AmirVoid12/pingflux/wiki/Protocols) | `http`, `https`, `tcp`, `udp`, `dns`, `ping` |
+| [Events](https://github.com/AmirVoid12/pingflux/wiki/Events) | event types and payload |
+| [ICMP Ping](https://github.com/AmirVoid12/pingflux/wiki/ICMP-Ping) | how the native addon works, permissions, errors |
+| [Native Addon](https://github.com/AmirVoid12/pingflux/wiki/Native-Addon) | build, prebuilds, source layout |
+| [Troubleshooting](https://github.com/AmirVoid12/pingflux/wiki/Troubleshooting) | common problems and fixes |
+| [Roadmap](https://github.com/AmirVoid12/pingflux/wiki/Roadmap) | what is planned |
 
 ---
 
@@ -203,19 +233,31 @@ pf.watch({ protocol: "dns", url: "google.com" });
 
 ### `ping`
 
-sends a raw ICMP echo request and waits for a matching reply. the blocking `recvfrom` syscall runs inside a Worker thread to avoid blocking the event loop.
+sends an ICMP echo request and waits for a matching reply. this is done by a native C addon (N-API) running on the libuv threadpool, so the event loop is never blocked.
 
-⚠️ **requires elevated privileges:**
-- Linux: root or `CAP_NET_RAW` (`sudo setcap cap_net_raw+ep $(which node)`)
-- macOS: root
-- Windows: Administrator
+⚠️ **linux only for now.** on other systems the probe returns an error.
 
-⚠️ **url must be a plain IPv4 address.** hostname resolution is not performed — resolve the hostname before passing it in.
+⚠️ **url must be a plain IP address** (IPv4 or IPv6). hostname resolution is not performed — resolve the hostname before passing it in.
 
 ```typescript
 pf.watch({ protocol: "ping", url: "1.1.1.1" });
-pf.watch({ protocol: "ping", url: "8.8.8.8", interval: 3000 });
+pf.watch({ protocol: "ping", url: "2606:4700:4700::1111", interval: 3000 });
 ```
+
+**permissions.** in most cases it works as a normal user. the addon first tries an unprivileged `SOCK_DGRAM` ICMP socket, and falls back to `SOCK_RAW` (root or `CAP_NET_RAW`) only if that is refused. if you get a permission error, pick one:
+
+```bash
+# allow unprivileged ping for all groups
+sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
+
+# or give node the raw socket capability
+sudo setcap cap_net_raw+ep $(which node)
+
+# or run as root
+sudo node app.js
+```
+
+details, error messages and native result fields: [ICMP Ping wiki page](https://github.com/AmirVoid12/pingflux/wiki/ICMP-Ping).
 
 ---
 
@@ -228,7 +270,7 @@ pf.watch({ protocol: "ping", url: "8.8.8.8", interval: 3000 });
 | `tcp` | `host:port` | `amirvoid12.ir:443` |
 | `udp` | `host:port` | `1.2.3.4:9000` |
 | `dns` | hostname (port suffix ignored) | `google.com` |
-| `ping` | plain IPv4 address | `1.1.1.1` |
+| `ping` | plain IPv4 or IPv6 address | `1.1.1.1` |
 
 ---
 
@@ -266,10 +308,10 @@ if a probe takes longer than the interval, the next scheduled run is skipped. th
 ## built with
 
 - **TypeScript** — fully typed, interfaces exported
-- **Node.js built-ins** — `net`, `dgram`, `dns`, `http`, `https`, `worker_threads`
-- **koffi** — FFI bindings for raw ICMP socket syscalls
+- **Node.js built-ins** — `net`, `dgram`, `dns`, `http`, `https`
+- **native C addon (N-API)** — ICMP echo over `SOCK_DGRAM` / `SOCK_RAW`, IPv4 and IPv6
 - `process.hrtime.bigint()` for sub-millisecond latency measurement
 
 ---
 
-built by [AmirVoid12 (AmirDavodinia)](https://amirvoid12.ir)
+built by [AmirVoid12](https://amirvoid12.ir)
