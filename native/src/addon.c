@@ -103,7 +103,8 @@ static void send_and_wait_one(int sock, int mode, int match_id, ping_task_t *tas
             continue;
         }
 
-        if (reply.type == expected_type && reply.id == match_id && reply.seq == seq) {
+        int id_ok = (mode == ICMP_SOCKET_MODE_DGRAM) || (reply.id == match_id);
+        if (reply.type == expected_type && id_ok && reply.seq == seq) {
             out->ok = 1;
             out->latency_ms = now_ms() - start;
             out->ttl = out_ttl;
@@ -144,21 +145,6 @@ static void execute_ping(napi_env env, void *data) {
     }
 
     int match_id = task->id;
-    if (mode == ICMP_SOCKET_MODE_DGRAM) {
-        if (task->ip_version == IP_VERSION_6) {
-            struct sockaddr_in6 local;
-            socklen_t local_len = sizeof(local);
-            if (getsockname(sock, (struct sockaddr *)&local, &local_len) == 0) {
-                match_id = ntohs(local.sin6_port);
-            }
-        } else {
-            struct sockaddr_in local;
-            socklen_t local_len = sizeof(local);
-            if (getsockname(sock, (struct sockaddr *)&local, &local_len) == 0) {
-                match_id = ntohs(local.sin_port);
-            }
-        }
-    }
 
     for (int i = 0; i < task->count; i++) {
         send_and_wait_one(sock, mode, match_id, task, task->seq_start + i, &task->results[i]);
